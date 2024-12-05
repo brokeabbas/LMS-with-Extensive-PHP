@@ -1,0 +1,169 @@
+<?php
+session_start();
+
+if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+    header("location: ../../registration/myschool_login.php");
+    exit;
+}
+
+require_once '../../../connections/db_school_data.php'; // Adjust path as necessary
+
+$school_id = $_SESSION['school_id']; // Retrieve the school ID from session
+
+// Fetch all approved books from the library for the specific school
+$books = [];
+$query = "SELECT id, title, author, genre, cover, book_pdf FROM library WHERE is_approved = 1 AND school_id = ?";
+$stmt = $schoolDataConn->prepare($query);
+$stmt->bind_param("i", $school_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $row['cover'] = ($row['cover']);
+        $row['book_pdf'] = ($row['book_pdf']);
+        $books[] = $row;
+    }
+}
+
+$stmt->close();
+$schoolDataConn->close();
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Books in Library</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="icon" href="../../IMAGES/3.png" type="image/x-icon">
+    <style>
+        body {
+            background-color: #2d3748; /* Darker background */
+            color: #e2e8f0; /* Light text color for better contrast */
+        }
+        .book-card {
+            max-width: 180px;
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+            background-color: #1a202c; /* Darker background for book cards */
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .book-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        .book-card img {
+            height: 250px; 
+            object-fit: cover;
+            width: 100%;
+        }
+        .book-card .info {
+            padding: 15px;
+        }
+        .book-card .info .title {
+            color: #f7fafc;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .book-card .info .author {
+            color: #a0aec0;
+            font-size: 0.875rem;
+            margin-top: 5px;
+        }
+        .book-card .info .genre {
+            display: inline-block;
+            background-color: #4a5568;
+            border-radius: 12px;
+            padding: 5px 10px;
+            color: #f7fafc;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        nav {
+            background-color: #1a202c;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        nav .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        nav .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease-in-out;
+        }
+        nav .nav-links a:hover {
+            background-color: #2d3748;
+        }
+        .search-bar {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .search-bar input {
+            width: 60%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #4a5568;
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased">
+    <nav>
+        <div class="logo">
+            <h1 class="text-2xl font-bold">Library</h1>
+        </div>
+    </nav>
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search by book name, author, or genre..." class="p-2 border rounded">
+    </div>
+    <div class="container mx-auto px-4 py-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4" id="booksGrid">
+            <?php foreach ($books as $book): ?>
+            <div class="book-card">
+                <a href="<?= htmlspecialchars($book['book_pdf']); ?>" target="_blank">
+                    <img src="<?= htmlspecialchars($book['cover']); ?>" alt="Cover image for <?= htmlspecialchars($book['title']); ?>">
+                </a>
+                <div class="info">
+                    <div class="title"><?= htmlspecialchars($book['title']); ?></div>
+                    <div class="author">Author: <?= htmlspecialchars($book['author']); ?></div>
+                    <div class="genre"><?= htmlspecialchars($book['genre']); ?></div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript to handle book search
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const books = document.querySelectorAll('.book-card');
+
+            books.forEach(book => {
+                const title = book.querySelector('.title').textContent.toLowerCase();
+                const author = book.querySelector('.author').textContent.toLowerCase();
+                const genre = book.querySelector('.genre').textContent.toLowerCase();
+
+                if (title.includes(searchTerm) || author.includes(searchTerm) || genre.includes(searchTerm)) {
+                    book.style.display = 'block';
+                } else {
+                    book.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
